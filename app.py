@@ -24,7 +24,7 @@ else:
     print("WARNING: serviceAccountKey.json missing.")
 
 # 2. Load TensorFlow .h5 Model
-MODEL_PATH = os.path.join(os.path.dirname(__file__), 'model.h5')
+MODEL_PATH = os.path.join(os.path.dirname(__file__), 'tomato_disease_model.h5')
 model = None
 
 if os.path.exists(MODEL_PATH):
