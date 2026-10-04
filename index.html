@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Precision Agriculture & Crop Health Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            900: '#14532d',
+                        },
+                        darkbg: '#0b1320',
+                        darkcard: '#131f32',
+                        darkborder: '#1e2d45'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(229, 231, 235, 0.8);
+        }
+        .dark .glass-panel {
+            background: rgba(19, 31, 50, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(30, 45, 69, 0.8);
+        }
+        .pulse-emerald {
+            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+            animation: pulse-green 2s infinite;
+        }
+        .pulse-amber {
+            box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+            animation: pulse-orange 1.5s infinite;
+        }
+        @keyframes pulse-green {
+            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+        @keyframes pulse-orange {
+            0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+        }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-thumb { background: #334155; }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-darkbg text-slate-800 dark:text-slate-100 transition-colors duration-200 min-h-screen flex flex-col">
+
+    <!-- Top Navigation Header -->
+    <header class="sticky top-0 z-40 w-full glass-panel border-b border-slate-200 dark:border-darkborder px-4 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+            <div class="p-2.5 bg-gradient-to-tr from-emerald-600 to-teal-500 text-white rounded-xl shadow-md shadow-emerald-500/20">
+                <i class="fa-solid font-bold fa-leaf text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-lg lg:text-xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+                    AgriSmart <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800">IoT ML v2.4</span>
+                </h1>
+                <p class="text-xs text-slate-500 dark:text-slate-400">Smart Precision Pesticide & Crop Disease System</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3 ml-auto lg:ml-0">
+            <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 pulse-emerald"></span>
+                <span class="font-medium text-slate-700 dark:text-slate-300">Cloud Sync: Active</span>
+                <span class="text-slate-400">|</span>
+                <span class="text-slate-500 dark:text-slate-400" id="latencyDisplay">28 ms</span>
+            </div>
+
+            <button id="themeToggle" class="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+                <i class="fa-solid fa-moon dark:hidden"></i>
+                <i class="fa-solid fa-sun hidden dark:block text-amber-400"></i>
+            </button>
+
+            <div class="flex items-center gap-3 pl-2 border-l border-slate-200 dark:border-slate-700">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-sm shadow">
+                    MS
+                </div>
+                <div class="hidden md:block text-left">
+                    <div class="text-sm font-semibold text-slate-800 dark:text-slate-200 leading-none">Mohana Sanjai NN</div>
+                    <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">Farm Admin</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+
+        <!-- Metrics Grid -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+            <div class="glass-panel p-5 rounded-2xl shadow-sm relative overflow-hidden group hover:border-emerald-500/50 transition">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Sprays Executed</p>
+                        <h3 id="metricSprayCount" class="text-3xl font-extrabold text-slate-900 dark:text-white mt-2">--</h3>
+                        <p class="text-xs text-emerald-600 dark:text-emerald-400 font-medium mt-1.5 flex items-center gap-1">
+                            <i class="fa-solid fa-arrow-trend-up"></i> Syncing with Firebase...
+                        </p>
+                    </div>
+                    <div class="p-3 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 rounded-xl">
+                        <i class="fa-solid fa-spray-can-sparkles text-xl"></i>
+                    </div>
+                </div>
+                <div class="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-400"></div>
+            </div>
+
+            <div class="glass-panel p-5 rounded-2xl shadow-sm relative overflow-hidden group hover:border-amber-500/50 transition">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Plant Status (Latest)</p>
+                        <h3 id="metricPlantStatus" class="text-lg font-bold text-amber-600 dark:text-amber-400 mt-1">Checking...</h3>
+                        <p id="metricConfidence" class="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">
+                            Confidence: <span class="font-semibold text-slate-800 dark:text-slate-200">--%</span>
+                        </p>
+                    </div>
+                    <div id="statusIconBg" class="p-3 bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 rounded-xl">
+                        <i id="statusIcon" class="fa-solid fa-triangle-exclamation text-xl"></i>
+                    </div>
+                </div>
+                <div id="statusIndicatorBar" class="absolute bottom-0 left-0 right-0 h-1 bg-amber-500"></div>
+            </div>
+
+            <div class="glass-panel p-5 rounded-2xl shadow-sm relative overflow-hidden group transition">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">ESP32 Pump Relay</p>
+                        <div class="flex items-center gap-2 mt-2">
+                            <span id="pumpBadge" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400">PUMP OFF</span>
+                        </div>
+                        <p id="pumpSubtext" class="text-xs text-slate-500 dark:text-slate-400 mt-2">ESP32 NodeMCU: Idle</p>
+                    </div>
+                    <div id="pumpIconContainer" class="p-3 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-xl">
+                        <i class="fa-solid fa-faucet-drip text-xl"></i>
+                    </div>
+                </div>
+                <div id="pumpBottomBar" class="absolute bottom-0 left-0 right-0 h-1 bg-slate-300 dark:bg-slate-700"></div>
+            </div>
+
+            <div class="glass-panel p-5 rounded-2xl shadow-sm relative overflow-hidden group hover:border-teal-500/50 transition">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Scans Processed</p>
+                        <h3 id="metricScans" class="text-3xl font-extrabold text-slate-900 dark:text-white mt-2">--</h3>
+                        <p class="text-xs text-teal-600 dark:text-teal-400 font-medium mt-1.5 flex items-center gap-1">
+                            <i class="fa-solid fa-microchip"></i> Avg runtime: 42ms
+                        </p>
+                    </div>
+                    <div class="p-3 bg-teal-100 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 rounded-xl">
+                        <i class="fa-solid fa-camera text-xl"></i>
+                    </div>
+                </div>
+                <div class="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-500 to-cyan-400"></div>
+            </div>
+        </section>
+
+        <!-- ESP32-CAM Inspection & Controls -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div class="lg:col-span-7 glass-panel p-5 rounded-2xl shadow-sm flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-eye text-emerald-600 dark:text-emerald-400"></i>
+                            <h2 class="font-bold text-base text-slate-900 dark:text-white">ESP32-CAM AI Vision Live Inspection</h2>
+                        </div>
+                        <span class="text-xs px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg font-mono">Res: 224x224 RGB</span>
+                    </div>
+
+                    <div class="relative w-full h-64 sm:h-80 bg-slate-950 rounded-xl overflow-hidden flex items-center justify-center border border-slate-800 group">
+                        <img id="leafImage" src="https://images.unsplash.com/photo-1592417817098-8f3d6eb1626d?auto=format&fit=crop&w=800&q=80" 
+                             alt="Tomato Leaf Sample" class="w-full h-full object-cover transition-all duration-300">
+
+                        <div id="detectionBox" class="absolute border-2 border-amber-400 bg-amber-500/20 rounded-lg p-2 flex flex-col justify-between transition-all duration-300"
+                             style="top: 20%; left: 25%; width: 50%; height: 55%;">
+                            <div class="bg-amber-500 text-slate-950 text-[10px] font-bold px-1.5 py-0.5 rounded w-max flex items-center gap-1 shadow">
+                                <i class="fa-solid fa-bug"></i> <span id="boxLabel">Tomato Early Blight</span>
+                            </div>
+                        </div>
+
+                        <div class="absolute bottom-3 left-3 right-3 bg-slate-900/80 backdrop-blur-md border border-slate-700/60 p-3 rounded-xl flex items-center justify-between text-xs text-slate-200">
+                            <div>
+                                <span class="text-slate-400 block text-[10px] uppercase">Detected Condition</span>
+                                <span id="overlayCondition" class="font-bold text-amber-400 text-sm">Waiting for Scan...</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-400 block text-[10px] uppercase">ML Model</span>
+                                <span class="font-medium text-slate-200">ONNX Quantized</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-400 block text-[10px] uppercase">Inference Time</span>
+                                <span class="font-medium text-emerald-400">42 ms</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Real-time image feed synchronized with Firebase Cloud Storage.</p>
+                </div>
+            </div>
+
+            <div class="lg:col-span-5 glass-panel p-5 rounded-2xl shadow-sm flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-sliders text-emerald-600 dark:text-emerald-400"></i>
+                            <h2 class="font-bold text-base text-slate-900 dark:text-white">Relay Pump Control Center</h2>
+                        </div>
+                        <span class="text-xs text-slate-500">ESP32-PUMP-01</span>
+                    </div>
+
+                    <div id="modeInfoBox" class="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 mb-5 text-xs text-emerald-900 dark:text-emerald-200">
+                        <div class="flex items-start gap-2.5">
+                            <i class="fa-solid fa-circle-info text-emerald-600 dark:text-emerald-400 text-sm mt-0.5"></i>
+                            <div>
+                                <span class="font-bold block mb-0.5">Auto Spraying Logic Active</span>
+                                The ESP32 pump will automatically trigger for 3 seconds whenever the ML model classifies leaf disease with &gt; 80% confidence.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <label class="text-xs font-semibold text-slate-600 dark:text-slate-300 block">Manual Spray Actuation</label>
+                        <button id="manualSprayBtn" class="w-full py-3.5 px-4 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-md shadow-emerald-600/20 transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-faucet-drip"></i>
+                            <span>Trigger Manual Spray (3s)</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Real-Time Telemetry Logs Section -->
+        <section class="glass-panel p-5 rounded-2xl shadow-sm">
+            <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+                <div>
+                    <h2 class="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                        <i class="fa-solid fa-clock-rotate-left text-emerald-600 dark:text-emerald-400"></i>
+                        Real-Time Telemetry & Action Logs
+                    </h2>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Timestamped database updates synchronized with Firebase</p>
+                </div>
+                <span class="text-xs px-2.5 py-1 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 rounded-lg font-mono">Live Stream</span>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead>
+                        <tr class="text-slate-400 border-b border-slate-200 dark:border-slate-800 uppercase font-semibold">
+                            <th class="py-3 px-3">Timestamp</th>
+                            <th class="py-3 px-3">Device ID</th>
+                            <th class="py-3 px-3">ML Inference Condition</th>
+                            <th class="py-3 px-3">Confidence</th>
+                            <th class="py-3 px-3">Action Executed</th>
+                            <th class="py-3 px-3 text-right">Relay State</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logTableBody" class="divide-y divide-slate-100 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300 font-medium">
+                        <!-- Dynamic Rows Inserted via Firebase SDK -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="mt-auto py-4 px-6 border-t border-slate-200 dark:border-darkborder text-center text-xs text-slate-500 dark:text-slate-400">
+        Smart Precision Agriculture System • ESP32-CAM + ESP32 NodeMCU Controller • Cloud ML Inference Engine
+    </footer>
+
+    <!-- Firebase SDK Setup and Configuration Script -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-analytics.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js";
+
+        // Your Exact Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyD1uCo-XuiR7aNStZW_JVXfW-C_TbcQaOc",
+            authDomain: "smartpesticide-2b0e3.firebaseapp.com",
+            databaseURL: "https://smartpesticide-2b0e3-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "smartpesticide-2b0e3",
+            storageBucket: "smartpesticide-2b0e3.firebasestorage.app",
+            messagingSenderId: "361877214405",
+            appId: "1:361877214405:web:76e53deaf6c45337ae0cac",
+            measurementId: "G-J8X1Y069VM"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const db = getDatabase(app);
+
+        // 1. Live Listener for Total Spray Count
+        const sprayCountRef = ref(db, 'system/spray_count');
+        onValue(sprayCountRef, (snapshot) => {
+            const count = snapshot.val() || 0;
+            const sprayCountEl = document.getElementById('metricSprayCount');
+            if (sprayCountEl) sprayCountEl.innerText = count;
+        });
+
+        // 2. Live Listener for Plant Disease Condition Status & Relay State
+        const statusRef = ref(db, 'system/status');
+        onValue(statusRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                const conditionEl = document.getElementById('metricPlantStatus');
+                const confidenceEl = document.getElementById('metricConfidence');
+                const overlayCondition = document.getElementById('overlayCondition');
+                const boxLabel = document.getElementById('boxLabel');
+                const pumpBadge = document.getElementById('pumpBadge');
+
+                if (conditionEl) conditionEl.innerText = data.disease || 'Healthy';
+                if (confidenceEl && data.confidence) {
+                    confidenceEl.innerHTML = `Confidence: <span class="font-semibold text-slate-800 dark:text-slate-200">${data.confidence}%</span>`;
+                }
+                if (overlayCondition) overlayCondition.innerText = data.disease || 'Healthy';
+                if (boxLabel) boxLabel.innerText = `${data.disease} (${data.confidence}%)`;
+
+                if (pumpBadge) {
+                    if (data.should_spray) {
+                        pumpBadge.innerText = "SPRAYING ACTIVE";
+                        pumpBadge.className = "px-2.5 py-1 text-xs font-bold rounded-lg bg-emerald-500 text-white pulse-emerald";
+                    } else {
+                        pumpBadge.innerText = "PUMP OFF";
+                        pumpBadge.className = "px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400";
+                    }
+                }
+            }
+        });
+
+        // 3. Live Listener for Scans Counter
+        const scansRef = ref(db, 'system/scans_count');
+        onValue(scansRef, (snapshot) => {
+            const scans = snapshot.val() || 0;
+            const scansEl = document.getElementById('metricScans');
+            if (scansEl) scansEl.innerText = scans;
+        });
+
+        // 4. Live Listener for Telemetry Logs Table
+        const logsRef = ref(db, 'logs');
+        onValue(logsRef, (snapshot) => {
+            const logsData = snapshot.val();
+            const logTableBody = document.getElementById('logTableBody');
+            if (logTableBody && logsData) {
+                logTableBody.innerHTML = '';
+                Object.values(logsData).reverse().forEach(log => {
+                    logTableBody.innerHTML += `
+                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+                            <td class="py-3 px-3 font-mono text-slate-400">${log.timestamp || ''}</td>
+                            <td class="py-3 px-3"><span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-mono text-[10px] text-slate-600 dark:text-slate-300">${log.device_id || 'ESP32-CAM-01'}</span></td>
+                            <td class="py-3 px-3 font-semibold ${log.condition === 'Healthy' ? 'text-emerald-500' : 'text-amber-500'}">${log.condition || ''}</td>
+                            <td class="py-3 px-3 text-slate-400">${log.confidence || ''}</td>
+                            <td class="py-3 px-3">${log.action || ''}</td>
+                            <td class="py-3 px-3 text-right">
+                                <span class="px-2 py-0.5 text-[10px] font-bold rounded ${log.relay_state === 'RELAY ON' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}">
+                                    ${log.relay_state || 'OFF'}
+                                </span>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+        });
+
+        // Theme Toggle Handler
+        document.getElementById('themeToggle').addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+        });
+    </script>
+</body>
+</html>
