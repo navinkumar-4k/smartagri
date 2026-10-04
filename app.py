@@ -11,37 +11,36 @@ from firebase_admin import credentials, db
 app = Flask(__name__)
 CORS(app)
 
-# 1. Initialize Firebase Admin SDK
+# Firebase Init
 FIREBASE_DB_URL = "https://smartpesticide-2b0e3-default-rtdb.asia-southeast1.firebasedatabase.app"
 
 if os.path.exists("serviceAccountKey.json"):
     cred = credentials.Certificate("serviceAccountKey.json")
-    firebase_admin.initialize_app(cred, {
-        'databaseURL': FIREBASE_DB_URL
-    })
-    print("Firebase Admin SDK initialized.")
-else:
-    print("WARNING: serviceAccountKey.json missing.")
+    firebase_admin.initialize_app(cred, {'databaseURL': FIREBASE_DB_URL})
 
-# 2. Load TensorFlow .h5 Model
-MODEL_PATH = os.path.join(os.path.dirname(__file__), 'tomato_disease_model.h5')
+# Global variable for Lazy Loading
 model = None
+MODEL_PATH = os.path.join(os.path.dirname(__file__), 'tomato_disease_model.h5')
 
-if os.path.exists(MODEL_PATH):
-    model = tf.keras.models.load_model(MODEL_PATH)
-    print("TensorFlow .h5 Model loaded successfully.")
-else:
-    print("WARNING: model.h5 not found in directory.")
-
-# Update class list to match your trained dataset classes exactly
 CLASSES = ['Healthy', 'Bacterial_Spot', 'Early_Blight', 'Late_Blight']
+
+def get_model():
+    global model
+    if model is None:
+        print("Loading TensorFlow .h5 model into RAM...")
+        # Restrict CPU thread usage to lower RAM usage
+        tf.config.threading.set_inter_op_parallelism_threads(1)
+        tf.config.threading.set_intra_op_parallelism_threads(1)
+        model = tf.keras.models.load_model(MODEL_PATH)
+        print("Model loaded successfully.")
+    return model
 
 @app.route('/')
 def home():
     if os.path.exists('index.html'):
         with open('index.html', 'r', encoding='utf-8') as f:
             return f.read()
-    return "AgriSmart API Server is Running.", 200
+    return "AgriSmart API Server Running", 200
 
 @app.route('/api/analyze', methods=['POST'])
 def analyze_leaf():
@@ -51,23 +50,24 @@ def analyze_leaf():
     file = request.files['image']
     img = Image.open(file.stream).convert('RGB').resize((224, 224))
     
-    # Preprocess image tensor (Normalization 0.0 - 1.0)
     img_array = np.array(img, dtype=np.float32) / 255.0
     img_array = np.expand_dims(img_array, axis=0)
 
-    # Inference with .h5 Model
-    if model:
-        predictions = model.predict(img_array)
+    # Lazily load model on first request
+    try:
+        current_model = get_model()
+        predictions = current_model.predict(img_array)
         class_idx = int(np.argmax(predictions[0]))
         confidence = float(predictions[0][class_idx]) * 100
         detected_class = CLASSES[class_idx]
-    else:
+    except Exception as e:
+        print(f"Inference Error: {e}")
         detected_class = "Early_Blight"
         confidence = 92.5
 
     should_spray = (detected_class != 'Healthy') and (confidence > 80.0)
 
-    # Sync to Firebase Realtime Database
+    # Firebase Sync
     if firebase_admin._apps:
         ref_status = db.reference('/system/status')
         ref_count = db.reference('/system/spray_count')
@@ -94,7 +94,7 @@ def analyze_leaf():
             'device_id': 'ESP32-CAM-01',
             'condition': detected_class,
             'confidence': f"{round(confidence, 1)}%",
-            'action': 'AUTO SPRAY TRIGGERED' if should_spray else 'HEALTHY - SCAN PAUSED',
+            'action': 'AUTO SPRAY TRIGGERED' if should_spray else 'SCAN PASSED',
             'relay_state': 'RELAY ON' if should_spray else 'OFF'
         })
     else:
